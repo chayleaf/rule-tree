@@ -1,5 +1,5 @@
 [package]
-name = "dir-tree-filters"
+name = "rule-tree"
 version = "0.1.0"
 edition = "2021"
 

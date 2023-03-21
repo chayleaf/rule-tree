@@ -208,12 +208,12 @@ impl<K: Eq + Hash, V> RulesTree<K, V> {
         }
     }
     /// Get all rule values at a path. See [`TreeRule`] methods for more info on which rules you will get.
-    pub fn get_rules<T: Hash + Eq, P: BorrowedPath<T>>(&self, path: P, rule_name: &str) -> Vec<&TreeRule<V>>
+    pub fn get_rules<T: Hash + Eq + ?Sized, P: BorrowedPath<T> + ?Sized>(&self, path: &P, rule_name: &str) -> Vec<&TreeRule<V>>
         where K: Borrow<T>
     {
         self.get_rules_internal(path.split(), rule_name).0
     }
-    fn get_rules_internal<'a, T: 'a + Hash + Eq, I: Iterator<Item = &'a T>>(&self, mut path: I, rule_name: &str) -> (Vec<&TreeRule<V>>, bool)
+    fn get_rules_internal<'a, T: 'a + Hash + Eq + ?Sized, I: Iterator<Item = &'a T>>(&self, mut path: I, rule_name: &str) -> (Vec<&TreeRule<V>>, bool)
         where K: Borrow<T>
     {
         let mut ret = if let Some(seg) = path.next() {
@@ -243,6 +243,8 @@ impl<K: Eq + Hash, V> RulesTree<K, V> {
 
 #[cfg(test)]
 mod tests {
+    use std::{ffi::OsString, path::PathBuf};
+
     use super::*;
 
     #[test]
@@ -252,10 +254,14 @@ mod tests {
         rules.add_rule(["a", "b", "c", "d"], "test", TreeRule::overwrite("test_rule2"));
         rules.add_rule(["a", "b", "c", "d", "e"], "test", TreeRule::prepend("test_rule3"));
         rules.add_rule(["a", "b", "c", "d", "e", "f"], "test", TreeRule::overwrite("test_rule4"));
-        assert_eq!(rules.get_rules(["a", "b", "c", "e"], "test"), vec![&TreeRule::overwrite("test_rule")]);
-        assert_eq!(rules.get_rules(["a", "b", "c", "d", "f"], "test"), vec![&TreeRule::overwrite("test_rule2")]);
-        assert_eq!(rules.get_rules(["a", "b", "b"], "test"), Vec::<&TreeRule<_>>::new());
-        assert_eq!(rules.get_rules(["a", "b", "c", "d", "e"], "test"), vec![&TreeRule::prepend("test_rule3"), &TreeRule::overwrite("test_rule2")]);
-        assert_eq!(rules.get_rules(["a", "b", "c", "d", "e", "f"], "test"), vec![&TreeRule::overwrite("test_rule4")]);
+        assert_eq!(rules.get_rules(&["a", "b", "c", "e"], "test"), vec![&TreeRule::overwrite("test_rule")]);
+        assert_eq!(rules.get_rules(&["a", "b", "c", "d", "f"], "test"), vec![&TreeRule::overwrite("test_rule2")]);
+        assert_eq!(rules.get_rules(&["a", "b", "b"], "test"), Vec::<&TreeRule<_>>::new());
+        assert_eq!(rules.get_rules(&["a", "b", "c", "d", "e"], "test"), vec![&TreeRule::prepend("test_rule3"), &TreeRule::overwrite("test_rule2")]);
+        assert_eq!(rules.get_rules(&["a", "b", "c", "d", "e", "f"], "test"), vec![&TreeRule::overwrite("test_rule4")]);
+        let mut rules = RulesTree::<OsString, &'static str>::new();
+        let path = PathBuf::from("test");
+        rules.add_rule(path.clone(), "test", TreeRule::overwrite("test_rule"));
+        assert_eq!(rules.get_rules(path.as_path(), "test"), vec![&TreeRule::overwrite("test_rule")]);
     }
 }
